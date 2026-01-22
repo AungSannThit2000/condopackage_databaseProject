@@ -1,0 +1,75 @@
+erDiagram
+  USER_ACCOUNT ||--o| TENANT : "TENANT.user_id"
+  USER_ACCOUNT ||--o| STAFF  : "STAFF.user_id"
+
+  BUILDING ||--o{ ROOM : "ROOM.building_id"
+  ROOM ||--o| TENANT  : "TENANT.room_id"
+
+  TENANT ||--o{ PACKAGE : "PACKAGE.tenant_id"
+  STAFF  ||--o{ PACKAGE : "PACKAGE.received_by_staff_id"
+
+  PACKAGE ||--o{ PACKAGE_STATUS_LOG : "log.package_id"
+  STAFF   ||--o{ PACKAGE_STATUS_LOG : "log.updated_by_staff_id"
+
+  USER_ACCOUNT {
+    bigint user_id PK
+    text username UNIQUE
+    text password
+    text password_hash
+    text role  "TENANT|OFFICER|ADMIN"
+    text status "default ACTIVE"
+    timestamptz created_at
+  }
+
+  BUILDING {
+    bigint building_id PK
+    text building_code UNIQUE
+    text building_name
+  }
+
+  ROOM {
+    bigint room_id PK
+    bigint building_id FK
+    text room_no
+    int floor
+    text status "default ACTIVE"
+    UNIQUE(building_id, room_no)
+  }
+
+  TENANT {
+    bigint tenant_id PK
+    bigint user_id FK UNIQUE
+    bigint room_id FK
+    text full_name
+    text phone
+    text email
+  }
+
+  STAFF {
+    bigint staff_id PK
+    bigint user_id FK UNIQUE
+    text full_name
+    text phone
+    text email
+  }
+
+  PACKAGE {
+    bigint package_id PK
+    bigint tenant_id FK
+    bigint received_by_staff_id FK
+    text tracking_no
+    text carrier
+    text sender_name
+    timestamptz arrived_at "default now()"
+    text current_status "ARRIVED|PICKED_UP|RETURNED"
+    timestamptz picked_up_at
+  }
+
+  PACKAGE_STATUS_LOG {
+    bigint log_id PK
+    bigint package_id FK
+    bigint updated_by_staff_id FK
+    text status
+    timestamptz status_time "default now()"
+    text note
+  }
