@@ -15,7 +15,6 @@ erDiagram
     bigint user_id PK
     text username UNIQUE
     text password
-    text password_hash
     text role  "TENANT|OFFICER|ADMIN"
     text status "default ACTIVE"
     timestamptz created_at

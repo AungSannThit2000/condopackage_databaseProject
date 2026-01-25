@@ -1,4 +1,5 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import { pool } from "../server.js";
 
 const router = express.Router();
@@ -6,16 +7,76 @@ const router = express.Router();
 // helper: allowed status list (NOTIFIED removed)
 const STATUS_ALLOWED = ["ARRIVED", "PICKED_UP", "RETURNED"];
 
+async function requireOfficer(req, res) {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      res.status(401).json({ message: "Unauthorized" });
+      return null;
+    }
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      res.status(401).json({ message: "Invalid token" });
+      return null;
+    }
+    if (!["OFFICER", "ADMIN"].includes(payload.role)) {
+      res.status(403).json({ message: "Forbidden" });
+      return null;
+    }
+    return payload;
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+    return null;
+  }
+}
+
+// Profile info for header display
+router.get("/me", async (req, res) => {
+  const payload = await requireOfficer(req, res);
+  if (!payload) return;
+  try {
+    const staffQ = await pool.query(
+      `select staff_id, full_name from staff where user_id = $1`,
+      [payload.userId]
+    );
+    if (staffQ.rows.length === 0) {
+      return res.status(404).json({ message: "Profile not found" });
+    }
+    res.json({
+      staff_id: staffQ.rows[0].staff_id,
+      full_name: staffQ.rows[0].full_name,
+      role: payload.role,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.get("/dashboard", async (req, res) => {
   try {
-    const { status, unit, date, period } = req.query;
+    const { status, unit, date, period, start_date, end_date } = req.query;
 
     const filters = [];
     const values = [];
     let idx = 1;
 
-    // date/period filter
-    if (period === "last7") {
+    const startDate = start_date;
+    const endDate = end_date || (startDate ? new Date().toISOString().slice(0, 10) : null);
+
+    // date/period filter (range takes precedence)
+    if (startDate) {
+      filters.push(`p.arrived_at::date >= $${idx++}`);
+      values.push(startDate);
+      if (endDate) {
+        filters.push(`p.arrived_at::date <= $${idx++}`);
+        values.push(endDate);
+      }
+    } else if (period === "last7") {
       filters.push(`p.arrived_at::date >= (current_date - interval '6 days')`);
     } else if (period === "last30") {
       filters.push(`p.arrived_at::date >= (current_date - interval '29 days')`);

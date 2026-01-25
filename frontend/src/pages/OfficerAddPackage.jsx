@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import DashboardLayout from "../components/DashboardLayout.jsx";
+import { useOfficerDisplayName } from "../hooks/useOfficerDisplayName.js";
 
 function toLocalInput(value) {
   const d = new Date(value);
@@ -11,6 +12,7 @@ function toLocalInput(value) {
 
 export default function OfficerAddPackage() {
   const navigate = useNavigate();
+  const displayName = useOfficerDisplayName();
 
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -96,7 +98,7 @@ export default function OfficerAddPackage() {
       sidebarTitle="OFFICER DESK"
       sidebarSubtitle="Lobby Counter"
       activeKey="add"
-      userName="Officer"
+      userName={displayName || "Officer"}
       userSub="Front Desk"
       navItems={[
         { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/officer") },

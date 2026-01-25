@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import DashboardLayout from "../components/DashboardLayout.jsx";
+import { useOfficerDisplayName } from "../hooks/useOfficerDisplayName.js";
 
 export default function OfficerPackageLog() {
   const navigate = useNavigate();
+  const displayName = useOfficerDisplayName();
 
   const [logs, setLogs] = useState([]);
   const [unitOptions, setUnitOptions] = useState([]);
@@ -77,7 +79,7 @@ export default function OfficerPackageLog() {
       sidebarTitle="OFFICER DESK"
       sidebarSubtitle="Condo Juristic Office"
       activeKey="log"
-      userName="Officer"
+      userName={displayName || "Officer"}
       userSub="Front Desk"
       navItems={[
         { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/officer") },

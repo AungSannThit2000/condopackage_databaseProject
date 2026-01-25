@@ -23,7 +23,7 @@ export default function Login() {
       // e.g. { username, password } OR { email, password }
       const res = await api.post("/auth/login", { username, password });
 
-      const { token, role } = res.data;
+      const { token, role, displayName } = res.data;
 
       if (!token || !role) {
         throw new Error("Login response missing token/role");
@@ -32,7 +32,7 @@ export default function Login() {
       // If remember unchecked, store token only in memory is more complex.
       // For beginner version, we’ll keep localStorage always.
       // If you really want remember-me behavior later, we can move to sessionStorage.
-      login({ token, role });
+      login({ token, role, displayName });
 
       if (role === "ADMIN") navigate("/admin");
       else if (role === "OFFICER") navigate("/officer");

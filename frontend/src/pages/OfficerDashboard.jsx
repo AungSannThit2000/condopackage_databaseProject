@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import DashboardLayout from "../components/DashboardLayout.jsx";
+import { useOfficerDisplayName } from "../hooks/useOfficerDisplayName.js";
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
+  const displayName = useOfficerDisplayName();
 
   const [cards, setCards] = useState(null);
   const [packages, setPackages] = useState([]);
@@ -13,7 +15,8 @@ export default function OfficerDashboard() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [unitFilter, setUnitFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [periodFilter, setPeriodFilter] = useState("today");
   const [visibleCount, setVisibleCount] = useState(10);
 
@@ -32,7 +35,13 @@ export default function OfficerDashboard() {
     if (statusFilter) params.append("status", statusFilter);
     if (unitFilter) params.append("unit", unitFilter);
     if (periodFilter) params.append("period", periodFilter);
-    if (dateFilter) params.append("date", dateFilter);
+    if (periodFilter === "custom" && startDate) {
+      params.append("start_date", startDate);
+      params.append("end_date", endDate || new Date().toISOString().slice(0, 10));
+    }
+    if (periodFilter === "custom") {
+      params.append("date", ""); // ensure server ignores default today path
+    }
 
     const query = params.toString();
     const url = query ? `/officer/dashboard?${query}` : "/officer/dashboard";
@@ -50,7 +59,7 @@ export default function OfficerDashboard() {
         alert("Failed to load officer dashboard");
       })
       .finally(() => setLoading(false));
-  }, [statusFilter, unitFilter, dateFilter, periodFilter]);
+  }, [statusFilter, unitFilter, startDate, endDate, periodFilter]);
 
   const statusOptions = [
     { value: "", label: "All statuses" },
@@ -67,7 +76,7 @@ export default function OfficerDashboard() {
   useEffect(() => {
     // reset visible count when filters/search change
     setVisibleCount(10);
-  }, [statusFilter, unitFilter, dateFilter, periodFilter, search]);
+  }, [statusFilter, unitFilter, startDate, endDate, periodFilter, search]);
 
   return (
     <DashboardLayout
@@ -76,7 +85,7 @@ export default function OfficerDashboard() {
       sidebarTitle="OFFICER DESK"
       sidebarSubtitle="Condo Juristic Office"
       activeKey="dashboard"
-      userName="Officer"
+      userName={displayName || "Officer"}
       userSub="Front Desk"
       navItems={[
         {
@@ -161,23 +170,39 @@ export default function OfficerDashboard() {
               value={periodFilter}
               onChange={(e) => {
                 setPeriodFilter(e.target.value);
-                if (e.target.value !== "custom") setDateFilter("");
+                if (e.target.value !== "custom") {
+                  setStartDate("");
+                  setEndDate("");
+                } else if (!endDate) {
+                  setEndDate(new Date().toISOString().slice(0, 10));
+                }
               }}
             >
               <option value="today">Today</option>
               <option value="last7">Last 7 days</option>
               <option value="last30">Last 30 days</option>
               <option value="month">This month</option>
-              <option value="custom">Custom date</option>
+              <option value="custom">Custom range</option>
             </select>
 
             {periodFilter === "custom" ? (
-              <input
-                className="filterControl"
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              />
+              <>
+                <input
+                  className="filterControl"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  placeholder="Start date"
+                />
+                <input
+                  className="filterControl"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                  placeholder="End date"
+                />
+              </>
             ) : null}
 
             <select

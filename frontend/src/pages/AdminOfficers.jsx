@@ -10,6 +10,7 @@ export default function AdminOfficers() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [editPassword, setEditPassword] = useState("");
 
   const navItems = [
     { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/admin") },
@@ -42,7 +43,8 @@ export default function AdminOfficers() {
       loadData();
       alert("Officer created");
     } catch (err) {
-      alert("Failed to create officer");
+      const message = err.response?.data?.message || "Failed to create officer";
+      alert(message);
     }
   }
 
@@ -60,13 +62,18 @@ export default function AdminOfficers() {
     e.preventDefault();
     if (!editTarget) return;
     try {
-      await api.put(`/admin/officers/${editTarget.staff_id}`, {
+      const body = {
         full_name: editTarget.full_name,
         phone: editTarget.phone,
         email: editTarget.email,
         status: editTarget.status,
-      });
+      };
+      if (editPassword.trim()) {
+        body.password = editPassword.trim();
+      }
+      await api.put(`/admin/officers/${editTarget.staff_id}`, body);
       setEditTarget(null);
+      setEditPassword("");
       loadData();
       alert("Officer updated");
     } catch {
@@ -127,7 +134,7 @@ export default function AdminOfficers() {
                   <td>{o.email || "-"}</td>
                   <td><span className="badge">{o.status}</span></td>
                   <td style={{ display: "flex", gap: 8 }}>
-                    <button className="btnSecondary" onClick={() => setEditTarget(o)}>Edit</button>
+                    <button className="btnSecondary" onClick={() => { setEditTarget(o); setEditPassword(""); }}>Edit</button>
                     <button
                       className="btnSecondary"
                       style={{ background: "#fee2e2", color: "#b91c1c", borderColor: "#fecaca" }}
@@ -299,6 +306,16 @@ export default function AdminOfficers() {
                 <input
                   value={editTarget.email || ""}
                   onChange={(e) => setEditTarget((t) => ({ ...t, email: e.target.value }))}
+                  style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb" }}
+                />
+              </div>
+              <div>
+                <label className="label">New Password (optional)</label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Leave blank to keep current password"
                   style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb" }}
                 />
               </div>

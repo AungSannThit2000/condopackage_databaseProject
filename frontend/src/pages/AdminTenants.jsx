@@ -12,6 +12,7 @@ export default function AdminTenants() {
   const [form, setForm] = useState({ username: "", password: "", full_name: "", phone: "", email: "", room_id: "" });
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [editPassword, setEditPassword] = useState("");
 
   const navItems = [
     { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/admin") },
@@ -68,8 +69,9 @@ export default function AdminTenants() {
       setShowCreate(false);
       loadData();
       alert("Tenant created");
-    } catch {
-      alert("Failed to create tenant");
+    } catch (err) {
+      const message = err.response?.data?.message || "Failed to create tenant";
+      alert(message);
     }
   }
 
@@ -87,14 +89,19 @@ export default function AdminTenants() {
     e.preventDefault();
     if (!editTarget) return;
     try {
-      await api.put(`/admin/tenants/${editTarget.tenant_id}`, {
+      const body = {
         full_name: editTarget.full_name,
         phone: editTarget.phone,
         email: editTarget.email,
         room_id: editTarget.room_id,
         status: editTarget.status,
-      });
+      };
+      if (editPassword.trim()) {
+        body.password = editPassword.trim();
+      }
+      await api.put(`/admin/tenants/${editTarget.tenant_id}`, body);
       setEditTarget(null);
+      setEditPassword("");
       loadData();
       alert("Tenant updated");
     } catch {
@@ -171,7 +178,7 @@ export default function AdminTenants() {
                     <td>{t.email || "-"}</td>
                     <td><span className="badge">{t.status}</span></td>
                     <td style={{ display: "flex", gap: 8 }}>
-                      <button className="btnSecondary" onClick={() => setEditTarget(t)}>Edit</button>
+                      <button className="btnSecondary" onClick={() => { setEditTarget(t); setEditPassword(""); }}>Edit</button>
                       <button
                         className="btnSecondary"
                         style={{ background: "#fee2e2", color: "#b91c1c", borderColor: "#fecaca" }}
@@ -360,6 +367,16 @@ export default function AdminTenants() {
                 <input
                   value={editTarget.email || ""}
                   onChange={(e) => setEditTarget((t) => ({ ...t, email: e.target.value }))}
+                  style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb" }}
+                />
+              </div>
+              <div>
+                <label className="label">New Password (optional)</label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Leave blank to keep current password"
                   style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb" }}
                 />
               </div>

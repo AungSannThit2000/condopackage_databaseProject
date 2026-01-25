@@ -44,7 +44,7 @@ export default function AdminDashboard() {
       <div className="cardsRow">
         <Card icon="🧑‍💼" label="Active Officers" value={loading ? "…" : cards?.activeOfficers} />
         <Card icon="🏢" label="Units (Total)" value={loading ? "…" : cards?.totalUnits} />
-        <Card icon="👥" label="Tenants Registered" value={loading ? "…" : cards?.tenantsRegistered} />
+        <Card icon="👥" label="Active Tenants" value={loading ? "…" : cards?.tenantsRegistered} />
       </div>
 
       <div className="cardsRow" style={{ gridTemplateColumns: "1fr 1fr" }}>

@@ -62,6 +62,22 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid username or password" });
     }
 
+    // Resolve display name based on role
+    let displayName = user.username;
+    if (user.role === "TENANT") {
+      const nameQ = await pool.query(
+        `select full_name from tenant where user_id = $1`,
+        [user.user_id]
+      );
+      displayName = nameQ.rows[0]?.full_name || displayName;
+    } else {
+      const nameQ = await pool.query(
+        `select full_name from staff where user_id = $1`,
+        [user.user_id]
+      );
+      displayName = nameQ.rows[0]?.full_name || displayName;
+    }
+
     const token = jwt.sign(
       { userId: user.user_id, role: user.role },
       process.env.JWT_SECRET,
@@ -70,7 +86,8 @@ router.post("/login", async (req, res) => {
 
     res.json({
       token,
-      role: user.role
+      role: user.role,
+      displayName
     });
   } catch (err) {
     console.error("Login error:", err);

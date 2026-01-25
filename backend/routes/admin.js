@@ -1,6 +1,5 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
 import { pool } from "../server.js";
 
 const router = express.Router();
@@ -335,14 +334,13 @@ router.post("/tenants", async (req, res) => {
   try {
     const { username, password, full_name, phone, email, room_id } = req.body;
     await client.query("begin");
-    const hashed = await bcrypt.hash(password, 10);
     const userQ = await client.query(
       `
       insert into user_account (username, password, role, status)
       values ($1, $2, 'TENANT', 'ACTIVE')
       returning user_id
       `,
-      [username, hashed]
+      [username, password]
     );
     const userId = userQ.rows[0].user_id;
     const tenantQ = await client.query(
@@ -357,6 +355,10 @@ router.post("/tenants", async (req, res) => {
     res.status(201).json({ tenant_id: tenantQ.rows[0].tenant_id });
   } catch (err) {
     await client.query("rollback");
+    if (err.code === "23505") {
+      console.error("Duplicate username when creating tenant:", err.detail);
+      return res.status(409).json({ message: "Username already exists" });
+    }
     console.error(err);
     res.status(500).json({ message: "Server error" });
   } finally {
@@ -369,7 +371,7 @@ router.put("/tenants/:id", async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { full_name, phone, email, room_id, status } = req.body;
+    const { full_name, phone, email, room_id, status, password } = req.body;
     await client.query("begin");
     const tenantQ = await client.query(
       `
@@ -390,6 +392,12 @@ router.put("/tenants/:id", async (req, res) => {
     if (status) {
       await client.query(`update user_account set status = $1 where user_id = $2`, [
         status,
+        tenantQ.rows[0].user_id,
+      ]);
+    }
+    if (password) {
+      await client.query(`update user_account set password = $1 where user_id = $2`, [
+        password,
         tenantQ.rows[0].user_id,
       ]);
     }
@@ -454,14 +462,13 @@ router.post("/officers", async (req, res) => {
   try {
     const { username, password, full_name, phone, email } = req.body;
     await client.query("begin");
-    const hashed = await bcrypt.hash(password, 10);
     const userQ = await client.query(
       `
       insert into user_account (username, password, role, status)
       values ($1, $2, 'OFFICER', 'ACTIVE')
       returning user_id
       `,
-      [username, hashed]
+      [username, password]
     );
     const staffQ = await client.query(
       `
@@ -475,6 +482,10 @@ router.post("/officers", async (req, res) => {
     res.status(201).json({ staff_id: staffQ.rows[0].staff_id });
   } catch (err) {
     await client.query("rollback");
+    if (err.code === "23505") {
+      console.error("Duplicate username when creating officer:", err.detail);
+      return res.status(409).json({ message: "Username already exists" });
+    }
     console.error(err);
     res.status(500).json({ message: "Server error" });
   } finally {
@@ -487,7 +498,7 @@ router.put("/officers/:id", async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { full_name, phone, email, status } = req.body;
+    const { full_name, phone, email, status, password } = req.body;
     await client.query("begin");
     const staffQ = await client.query(
       `
@@ -507,6 +518,12 @@ router.put("/officers/:id", async (req, res) => {
     if (status) {
       await client.query(`update user_account set status = $1 where user_id = $2`, [
         status,
+        staffQ.rows[0].user_id,
+      ]);
+    }
+    if (password) {
+      await client.query(`update user_account set password = $1 where user_id = $2`, [
+        password,
         staffQ.rows[0].user_id,
       ]);
     }
@@ -543,7 +560,7 @@ router.delete("/officers/:id", async (req, res) => {
 router.get("/packages", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   try {
-    const { status, period } = req.query;
+    const { status, period, start_date, end_date } = req.query;
     const filters = [];
     const values = [];
     let idx = 1;
@@ -551,7 +568,18 @@ router.get("/packages", async (req, res) => {
       filters.push(`p.current_status = $${idx++}`);
       values.push(status);
     }
-    if (period === "last7") {
+
+    const startDate = start_date;
+    const endDate = end_date || (startDate ? new Date().toISOString().slice(0, 10) : null);
+
+    if (startDate) {
+      filters.push(`p.arrived_at::date >= $${idx++}`);
+      values.push(startDate);
+      if (endDate) {
+        filters.push(`p.arrived_at::date <= $${idx++}`);
+        values.push(endDate);
+      }
+    } else if (period === "last7") {
       filters.push(`p.arrived_at::date >= (current_date - interval '6 days')`);
     } else if (period === "last30") {
       filters.push(`p.arrived_at::date >= (current_date - interval '29 days')`);

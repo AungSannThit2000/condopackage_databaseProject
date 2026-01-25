@@ -21,6 +21,8 @@ export default function AdminPackages() {
   const [form, setForm] = useState({ tenant_id: "", staff_id: "", tracking_no: "", carrier: "", status: "ARRIVED" });
   const [showCreate, setShowCreate] = useState(false);
   const [periodFilter, setPeriodFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   const navItems = [
     { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/admin") },
@@ -33,13 +35,18 @@ export default function AdminPackages() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, periodFilter, startDate, endDate]);
 
   function loadData() {
     setLoading(true);
     const qs = new URLSearchParams();
     if (statusFilter) qs.append("status", statusFilter);
     if (periodFilter) qs.append("period", periodFilter);
+    if (periodFilter === "custom" && startDate) {
+      qs.append("start_date", startDate);
+      qs.append("end_date", endDate || new Date().toISOString().slice(0, 10));
+    }
     const pkgUrl = qs.toString() ? `/admin/packages?${qs.toString()}` : "/admin/packages";
     Promise.all([api.get(pkgUrl), api.get("/admin/tenants"), api.get("/admin/officers")])
       .then(([pkgRes, tenantRes, officerRes]) => {
@@ -126,13 +133,44 @@ export default function AdminPackages() {
               ))}
             </select>
 
-            <select className="filterControl" value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value)}>
+            <select
+              className="filterControl"
+              value={periodFilter}
+              onChange={(e) => {
+                setPeriodFilter(e.target.value);
+                if (e.target.value !== "custom") {
+                  setStartDate("");
+                  setEndDate(new Date().toISOString().slice(0, 10));
+                } else if (!endDate) {
+                  setEndDate(new Date().toISOString().slice(0, 10));
+                }
+              }}
+            >
               <option value="">All time</option>
               <option value="today">Today</option>
               <option value="last7">Last 7 days</option>
               <option value="last30">Last 30 days</option>
               <option value="month">This month</option>
+              <option value="custom">Custom range</option>
             </select>
+
+            {periodFilter === "custom" ? (
+              <>
+                <input
+                  className="filterControl"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <input
+                  className="filterControl"
+                  type="date"
+                  value={endDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </>
+            ) : null}
           </div>
           <div className="searchBox">
             <span className="searchIcon">🔍</span>

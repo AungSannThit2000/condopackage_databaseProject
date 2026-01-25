@@ -10,3 +10,20 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// Global auth guard: logout on unauthorized responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("role");
+      if (window.location.pathname !== "/login") {
+        alert("Your session expired. Please log in again.");
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);

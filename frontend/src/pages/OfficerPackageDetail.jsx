@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client.js";
 import DashboardLayout from "../components/DashboardLayout.jsx";
+import { useOfficerDisplayName } from "../hooks/useOfficerDisplayName.js";
 
 export default function OfficerPackageDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const displayName = useOfficerDisplayName();
 
   const [pkg, setPkg] = useState(null);
   const [status, setStatus] = useState("ARRIVED");
@@ -62,7 +64,7 @@ export default function OfficerPackageDetail() {
       sidebarTitle="OFFICER DESK"
       sidebarSubtitle="Lobby Counter"
       activeKey="list"
-      userName="Officer"
+      userName={displayName || "Officer"}
       userSub="Front Desk"
       navItems={[
         { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/officer") },
