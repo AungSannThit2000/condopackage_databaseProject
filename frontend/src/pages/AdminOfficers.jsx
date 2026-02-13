@@ -1,3 +1,8 @@
+/**
+ * Admin officers page.
+ * Handles officer account creation, profile edits, status changes, and account removal.
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";

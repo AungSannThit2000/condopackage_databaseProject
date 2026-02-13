@@ -1,3 +1,8 @@
+/**
+ * Officer package-detail page.
+ * Displays one package in depth and allows officers to update status + note.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -63,13 +68,13 @@ export default function OfficerPackageDetail() {
       subtitle="Register new packages and manage pickups"
       sidebarTitle="OFFICER DESK"
       sidebarSubtitle="Lobby Counter"
-      activeKey="list"
+      activeKey="log"
       userName={displayName || "Officer"}
       userSub="Front Desk"
       navItems={[
         { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/officer") },
         { key: "add", label: "Add Package", icon: "＋", onClick: () => navigate("/officer/add") },
-        { key: "list", label: "Package List", icon: "≡", onClick: () => navigate("/officer") },
+        { key: "log", label: "Package Log", icon: "≡", onClick: () => navigate("/officer/log") },
       ]}
     >
       {!pkg ? (

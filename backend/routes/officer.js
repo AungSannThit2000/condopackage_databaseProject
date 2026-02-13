@@ -1,3 +1,8 @@
+/**
+ * Officer routes.
+ * Handles dashboard metrics, package registration, package detail updates, and package activity logs.
+ */
+
 import express from "express";
 import jwt from "jsonwebtoken";
 import { pool } from "../server.js";
@@ -133,7 +138,7 @@ router.get("/dashboard", async (req, res) => {
         p.arrived_at
       from package p
       join tenant t on p.tenant_id = t.tenant_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       ${whereClause}
       order by p.arrived_at desc
@@ -176,7 +181,6 @@ router.get("/package-form", async (_req, res) => {
     const roomsQ = await pool.query(
       `
       select
-        r.room_id,
         r.room_no,
         r.building_id,
         b.building_code,
@@ -185,7 +189,7 @@ router.get("/package-form", async (_req, res) => {
         t.full_name as tenant_name
       from room r
       join building b on r.building_id = b.building_id
-      join tenant t on t.room_id = r.room_id
+      join tenant t on t.building_id = r.building_id and t.room_no = r.room_no
       order by b.building_code, r.room_no
       `
     );
@@ -264,7 +268,7 @@ router.get("/packages/:id", async (req, res) => {
         s.full_name as handled_by_staff
       from package p
       join tenant t on p.tenant_id = t.tenant_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       join staff s on p.received_by_staff_id = s.staff_id
       where p.package_id = $1
@@ -327,7 +331,6 @@ router.get("/package-log", async (req, res) => {
     const logsQ = await pool.query(
       `
       select
-        psl.log_id,
         psl.package_id,
         psl.status,
         psl.status_time,
@@ -341,7 +344,7 @@ router.get("/package-log", async (req, res) => {
       from package_status_log psl
       join package p on psl.package_id = p.package_id
       join tenant t on p.tenant_id = t.tenant_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       left join staff s on psl.updated_by_staff_id = s.staff_id
       ${whereClause}

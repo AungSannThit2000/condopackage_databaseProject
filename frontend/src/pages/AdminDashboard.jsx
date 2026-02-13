@@ -1,3 +1,8 @@
+/**
+ * Admin dashboard page.
+ * Summarizes system activity (officers/tenants/units/packages) for quick operational monitoring.
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -7,6 +12,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [cards, setCards] = useState(null);
   const [quick, setQuick] = useState(null);
+  const [pkgStats, setPkgStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,6 +22,7 @@ export default function AdminDashboard() {
       .then((res) => {
         setCards(res.data.cards);
         setQuick(res.data.quickStats);
+        setPkgStats(res.data.packageStats);
       })
       .catch(() => alert("Failed to load admin summary"))
       .finally(() => setLoading(false));
@@ -45,6 +52,12 @@ export default function AdminDashboard() {
         <Card icon="🧑‍💼" label="Active Officers" value={loading ? "…" : cards?.activeOfficers} />
         <Card icon="🏢" label="Units (Total)" value={loading ? "…" : cards?.totalUnits} />
         <Card icon="👥" label="Active Tenants" value={loading ? "…" : cards?.tenantsRegistered} />
+      </div>
+
+      <div className="cardsRow">
+        <Card icon="📦" label="Packages at Condo" value={loading ? "…" : pkgStats?.packagesAtCondo} />
+        <Card icon="✅" label="Picked Up Today" value={loading ? "…" : pkgStats?.pickedUpToday} />
+        <Card icon="↩" label="Returned This Month" value={loading ? "…" : pkgStats?.returnedThisMonth} />
       </div>
 
       <div className="cardsRow" style={{ gridTemplateColumns: "1fr 1fr" }}>

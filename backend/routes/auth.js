@@ -1,3 +1,8 @@
+/**
+ * Authentication routes.
+ * Validates credentials (including legacy password formats) and returns role-based JWT sessions.
+ */
+
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";

@@ -1,3 +1,8 @@
+/**
+ * Officer package-log page.
+ * Provides an activity feed of package status updates with filters and quick search.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -164,7 +169,7 @@ export default function OfficerPackageLog() {
                 </tr>
               ) : (
                 visibleLogs.map((log) => (
-                  <tr key={log.log_id}>
+                  <tr key={`${log.package_id}-${log.status_time}`}>
                     <td>{new Date(log.status_time).toLocaleString()}</td>
                     <td>
                       <span className="badge">{log.status}</span>

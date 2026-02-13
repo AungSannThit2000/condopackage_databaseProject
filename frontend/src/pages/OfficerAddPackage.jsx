@@ -1,3 +1,8 @@
+/**
+ * Officer add-package page.
+ * Collects package details, ties them to a tenant room, and submits a new package record.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -17,7 +22,7 @@ export default function OfficerAddPackage() {
   const [buildings, setBuildings] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [buildingId, setBuildingId] = useState("");
-  const [roomId, setRoomId] = useState("");
+  const [roomNo, setRoomNo] = useState("");
   const [tenantId, setTenantId] = useState("");
   const [tracking, setTracking] = useState("");
   const [carrier, setCarrier] = useState("");
@@ -32,8 +37,8 @@ export default function OfficerAddPackage() {
   );
 
   const selectedRoom = useMemo(
-    () => rooms.find((r) => String(r.room_id) === String(roomId)),
-    [rooms, roomId]
+    () => rooms.find((r) => String(r.building_id) === String(buildingId) && String(r.room_no) === String(roomNo)),
+    [rooms, buildingId, roomNo]
   );
 
   useEffect(() => {
@@ -55,7 +60,7 @@ export default function OfficerAddPackage() {
           (r) => !defaultBuildingId || String(r.building_id) === defaultBuildingId
         );
         if (firstRoom) {
-          setRoomId(String(firstRoom.room_id));
+          setRoomNo(String(firstRoom.room_no));
           setTenantId(String(firstRoom.tenant_id));
         }
       })
@@ -103,7 +108,7 @@ export default function OfficerAddPackage() {
       navItems={[
         { key: "dashboard", label: "Dashboard", icon: "▦", onClick: () => navigate("/officer") },
         { key: "add", label: "Add Package", icon: "＋", onClick: () => navigate("/officer/add") },
-        { key: "list", label: "Package List", icon: "≡", onClick: () => navigate("/officer") },
+        { key: "log", label: "Package Log", icon: "≡", onClick: () => navigate("/officer/log") },
       ]}
     >
       <div className="formCard">
@@ -136,10 +141,10 @@ export default function OfficerAddPackage() {
                 setBuildingId(nextBuilding);
                 const nextRoom = rooms.find((r) => String(r.building_id) === nextBuilding);
                 if (nextRoom) {
-                  setRoomId(String(nextRoom.room_id));
+                  setRoomNo(String(nextRoom.room_no));
                   setTenantId(String(nextRoom.tenant_id));
                 } else {
-                  setRoomId("");
+                  setRoomNo("");
                   setTenantId("");
                 }
               }}
@@ -155,16 +160,18 @@ export default function OfficerAddPackage() {
           <div className="field">
             <label>Room</label>
             <select
-              value={roomId}
+              value={roomNo}
               onChange={(e) => {
-                const nextRoomId = e.target.value;
-                setRoomId(nextRoomId);
-                const nextRoom = rooms.find((r) => String(r.room_id) === nextRoomId);
+                const nextNo = e.target.value;
+                setRoomNo(nextNo);
+                const nextRoom = rooms.find(
+                  (r) => String(r.building_id) === String(buildingId) && String(r.room_no) === String(nextNo)
+                );
                 setTenantId(nextRoom ? String(nextRoom.tenant_id) : "");
               }}
             >
               {filteredRooms.map((r) => (
-                <option key={r.room_id} value={r.room_id}>
+                <option key={`${r.building_id}:${r.room_no}`} value={r.room_no}>
                   Room {r.room_no}
                 </option>
               ))}

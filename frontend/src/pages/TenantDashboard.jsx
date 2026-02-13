@@ -1,3 +1,8 @@
+/**
+ * Tenant dashboard page.
+ * Shows personal package counters and the latest waiting packages for quick resident visibility.
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";

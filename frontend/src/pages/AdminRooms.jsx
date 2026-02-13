@@ -1,3 +1,8 @@
+/**
+ * Admin rooms page.
+ * Manages buildings and units, including create/edit/delete flows through modal forms.
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -52,6 +57,14 @@ export default function AdminRooms() {
 
   async function addRoom(e) {
     e.preventDefault();
+    if (!rForm.building_id) {
+      alert("Please select a building.");
+      return;
+    }
+    if (!rForm.room_no) {
+      alert("Please enter a room number.");
+      return;
+    }
     try {
       await api.post("/admin/rooms", {
         building_id: Number(rForm.building_id),
@@ -62,8 +75,9 @@ export default function AdminRooms() {
       setRForm({ building_id: "", room_no: "", floor: "", status: "ACTIVE" });
       setShowRoom(false);
       loadData();
-    } catch {
-      alert("Failed to add room");
+    } catch (err) {
+      const msg = err?.response?.data?.message || "Failed to add room";
+      alert(msg);
     }
   }
 
@@ -71,11 +85,14 @@ export default function AdminRooms() {
     e.preventDefault();
     if (!editRoom) return;
     try {
-      await api.put(`/admin/rooms/${editRoom.room_id}`, {
-        room_no: editRoom.room_no,
-        floor: editRoom.floor,
-        status: editRoom.status,
-      });
+      await api.put(
+        `/admin/rooms/${editRoom.building_id}/${encodeURIComponent(editRoom.original_room_no)}`,
+        {
+          room_no: editRoom.room_no,
+          floor: editRoom.floor,
+          status: editRoom.status,
+        }
+      );
       setEditRoom(null);
       loadData();
     } catch {
@@ -83,11 +100,11 @@ export default function AdminRooms() {
     }
   }
 
-  async function deleteRoom(roomId) {
+  async function deleteRoom(buildingId, roomNo) {
     if (!window.confirm("Delete this room?")) return;
     try {
-      await api.delete(`/admin/rooms/${roomId}`);
-      setRooms((prev) => prev.filter((r) => r.room_id !== roomId));
+      await api.delete(`/admin/rooms/${buildingId}/${encodeURIComponent(roomNo)}`);
+      setRooms((prev) => prev.filter((r) => !(r.building_id === buildingId && r.room_no === roomNo)));
     } catch {
       alert("Failed to delete room (in use?)");
     }
@@ -154,18 +171,18 @@ export default function AdminRooms() {
             ) : rooms.length === 0 ? (
               <tr><td colSpan="5">No rooms</td></tr>
             ) : (
-              rooms.map((r) => (
-                <tr key={r.room_id}>
+                rooms.map((r) => (
+                <tr key={`${r.building_id}:${r.room_no}`}>
                   <td>{r.building_code}</td>
                   <td>{r.room_no}</td>
                   <td>{r.floor || "-"}</td>
                   <td><span className="badge">{r.status}</span></td>
                   <td style={{ display: "flex", gap: 8 }}>
-                    <button className="btnSecondary" onClick={() => setEditRoom(r)}>Edit</button>
+                    <button className="btnSecondary" onClick={() => setEditRoom({ ...r, original_room_no: r.room_no })}>Edit</button>
                     <button
                       className="btnSecondary"
                       style={{ background: "#fee2e2", color: "#b91c1c", borderColor: "#fecaca" }}
-                      onClick={() => deleteRoom(r.room_id)}
+                      onClick={() => deleteRoom(r.building_id, r.room_no)}
                     >
                       Delete
                     </button>

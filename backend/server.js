@@ -1,3 +1,8 @@
+/**
+ * Backend entry point.
+ * Sets up middleware, mounts feature routes, and confirms DB connectivity on the root endpoint.
+ */
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";

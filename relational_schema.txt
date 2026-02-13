@@ -1,0 +1,110 @@
+======================================================== 
+
+RELATIONAL MODEL (Relation Schema Definition) 
+
+======================================================== 
+
+  
+
+  
+
+1) ISA / SPECIALIZATION (USER_ACCOUNT -> TENANT, STAFF)  
+
+USER_ACCOUNT( user_id, username UNIQUE, password,   role , status , created_at ) 
+
+TENANT( tenant_id, user_id, building_id , room_no ,  full_name, phone,  email) 
+
+STAFF( staff_id, user_id , full_name, phone, email ) 
+
+ 
+
+A TENANT must correspond to exactly one USER_ACCOUNT. 
+
+A STAFF must correspond to exactly one USER_ACCOUNT. 
+
+A USER_ACCOUNT may be a TENANT (0 or 1). 
+
+A USER_ACCOUNT may be a STAFF (0 or 1). 
+
+ 
+
+2) CONTAINS (BUILDING 0..* —— 1..1 ROOM) 
+
+BUILDING( building_id ,  building_code , building_name ) 
+
+ROOM(  building_id,  room_no,  floor,  status ,) 
+
+A BUILDING may contain zero or many ROOMs. 
+
+A ROOM must belong to exactly one BUILDING. 
+
+ 
+
+  
+
+3) LIVES_IN (ROOM 1..1 —— 0 ..1 TENANT)  
+
+ROOM(  building_id , room_no,  floor,  status ) 
+
+TENANT( tenant_id ,user_id, building_id, room_no,  full_name, phone , email) 
+
+ A TENANT must live in exactly one ROOM. 
+
+A ROOM may have zero or one TENANT. (because you enforce UNIQUE(building_id, room_no) in TENANT) 
+
+ 
+
+  
+
+4) FOR (TENANT 0..* ——  1..1 PACKAGE) 
+
+  
+
+TENANT( tenant_id ,  user_id,   buiding_id, room_no , full_name,  phone, email ) 
+
+PACKAGE( package_id, tenant_id,  received_by_staff_id ,  tracking_no, carrier,  arrived_at,  current_status , picked_up_at ) 
+
+A TENANT may have zero or many PACKAGEs. 
+
+A PACKAGE must be for exactly one TENANT 
+
+ 
+
+5) RECEIVED_BY ( STAFF 0..* —— 1..1 PACKAGE) 
+STAFF( staff_id, user_id, full_name, phone, email ) 
+
+PACKAGE( package_id, tenant_id, received_by_staff_id, tracking_no, carrier, sender_name, arrived_at, current_status, picked_up_at) 
+
+A STAFF member may receive zero or many PACKAGEs. 
+
+A PACKAGE must be received by exactly one STAFF member. 
+
+ 
+
+ 
+
+6) HAS_LOG (PACKAGE 0..* —— 1..1 PACKAGE_STATUS_LOG ) 
+PACKAGE( package_id, tenant_id, received_by_staff_id, tracking_no, carrier, sender_name, arrived_at, current_status, picked_up_at) 
+
+PACKAGE_STATUS_LOG( package_id, status_time, updated_by_staff_id, status, note,) 
+
+A PACKAGE may have zero or many status log entries. 
+
+A PACKAGE_STATUS_LOG entry must belong to exactly one PACKAGE. 
+
+ 
+
+7) UPDATED_BY ( STAFF 0..* ——  1..1 PACKAGE_STATUS_LOG )  
+STAFF( staff_id, user_id, full_name, phone, email ) 
+
+PACKAGE_STATUS_LOG( package_id, status_time, updated_by_staff_id, status,note) 
+
+ 
+
+======================================================== 
+
+END 
+
+======================================================== 
+
+ 

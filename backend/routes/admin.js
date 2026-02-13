@@ -1,3 +1,8 @@
+/**
+ * Admin routes.
+ * Central place for building/room/officer/tenant/package management and higher-level system reporting.
+ */
+
 import express from "express";
 import jwt from "jsonwebtoken";
 import { pool } from "../server.js";
@@ -34,6 +39,32 @@ async function requireAdmin(req, res) {
 router.get("/summary", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   try {
+    const packagesAtCondoQ = await pool.query(
+      `
+      select count(*)::int as count
+      from package
+      where current_status = 'ARRIVED'
+      `
+    );
+
+    const pickedUpTodayQ = await pool.query(
+      `
+      select count(*)::int as count
+      from package
+      where current_status = 'PICKED_UP'
+        and picked_up_at::date = current_date
+      `
+    );
+
+    const returnedThisMonthQ = await pool.query(
+      `
+      select count(*)::int as count
+      from package
+      where current_status = 'RETURNED'
+        and date_trunc('month', arrived_at) = date_trunc('month', current_date)
+      `
+    );
+
     const activeOfficersQ = await pool.query(
       `
       select count(*)::int as count
@@ -70,6 +101,11 @@ router.get("/summary", async (req, res) => {
         tenantsRegistered: tenantsQ.rows[0].count,
       },
       quickStats: totalOfficersQ.rows[0],
+      packageStats: {
+        packagesAtCondo: packagesAtCondoQ.rows[0].count,
+        pickedUpToday: pickedUpTodayQ.rows[0].count,
+        returnedThisMonth: returnedThisMonthQ.rows[0].count,
+      },
       systemStatus: "Online",
     });
   } catch (err) {
@@ -109,7 +145,7 @@ router.get("/buildings", async (req, res) => {
     const q = await pool.query(
       `
       select b.building_id, b.building_code, b.building_name,
-             count(r.room_id)::int as room_count
+             count(*)::int as room_count
       from building b
       left join room r on b.building_id = r.building_id
       group by b.building_id
@@ -174,10 +210,9 @@ router.delete("/buildings/:id", async (req, res) => {
     // find tenants in this building
     const tenantIdsQ = await client.query(
       `
-      select t.tenant_id
-      from tenant t
-      join room r on t.room_id = r.room_id
-      where r.building_id = $1
+      select tenant_id
+      from tenant
+      where building_id = $1
       `,
       [id]
     );
@@ -209,7 +244,6 @@ router.get("/rooms", async (req, res) => {
     const q = await pool.query(
       `
       select
-        r.room_id,
         r.room_no,
         r.floor,
         r.status,
@@ -232,25 +266,36 @@ router.post("/rooms", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   try {
     const { building_id, room_no, floor, status } = req.body;
+    if (!building_id || !room_no) {
+      return res.status(400).json({ message: "building_id and room_no are required" });
+    }
     const q = await pool.query(
       `
       insert into room (building_id, room_no, floor, status)
       values ($1, $2, $3, coalesce($4, 'ACTIVE'))
-      returning room_id, building_id, room_no, floor, status
+      returning building_id, room_no, floor, status
       `,
       [building_id, room_no, floor || null, status || "ACTIVE"]
     );
     res.status(201).json({ room: q.rows[0] });
   } catch (err) {
+    if (err.code === "23503") {
+      // foreign key violation (building not found)
+      return res.status(400).json({ message: "Building not found for building_id" });
+    }
+    if (err.code === "23505") {
+      // duplicate primary key
+      return res.status(409).json({ message: "Room already exists for this building" });
+    }
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-router.put("/rooms/:id", async (req, res) => {
+router.put("/rooms/:buildingId/:roomNo", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   try {
-    const { id } = req.params;
+    const { buildingId, roomNo } = req.params;
     const { room_no, floor, status } = req.body;
     const q = await pool.query(
       `
@@ -258,10 +303,10 @@ router.put("/rooms/:id", async (req, res) => {
       set room_no = coalesce($1, room_no),
           floor = $2,
           status = coalesce($3, status)
-      where room_id = $4
-      returning room_id, building_id, room_no, floor, status
+      where building_id = $4 and room_no = $5
+      returning building_id, room_no, floor, status
       `,
-      [room_no || null, floor || null, status || null, id]
+      [room_no || roomNo, floor || null, status || null, buildingId, roomNo]
     );
     if (q.rows.length === 0) return res.status(404).json({ message: "Not found" });
     res.json({ room: q.rows[0] });
@@ -271,17 +316,23 @@ router.put("/rooms/:id", async (req, res) => {
   }
 });
 
-router.delete("/rooms/:id", async (req, res) => {
+router.delete("/rooms/:buildingId/:roomNo", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   const client = await pool.connect();
   try {
-    const { id } = req.params;
+    const { buildingId, roomNo } = req.params;
     await client.query("begin");
-    const tenantIdsQ = await client.query(`select tenant_id from tenant where room_id = $1`, [id]);
+    const tenantIdsQ = await client.query(
+      `select tenant_id from tenant where building_id = $1 and room_no = $2`,
+      [buildingId, roomNo]
+    );
     for (const row of tenantIdsQ.rows) {
       await deleteTenantCascade(client, row.tenant_id);
     }
-    const q = await client.query(`delete from room where room_id = $1 returning room_id`, [id]);
+    const q = await client.query(
+      `delete from room where building_id = $1 and room_no = $2 returning building_id`,
+      [buildingId, roomNo]
+    );
     if (q.rows.length === 0) {
       await client.query("rollback");
       return res.status(404).json({ message: "Not found" });
@@ -310,13 +361,13 @@ router.get("/tenants", async (req, res) => {
         t.email,
         u.username,
         u.status,
-        r.room_id,
         r.room_no,
         r.floor,
-        b.building_code
+        b.building_code,
+        b.building_id
       from tenant t
       join user_account u on t.user_id = u.user_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       order by b.building_code, r.room_no
       `
@@ -332,7 +383,7 @@ router.post("/tenants", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   const client = await pool.connect();
   try {
-    const { username, password, full_name, phone, email, room_id } = req.body;
+    const { username, password, full_name, phone, email, building_id, room_no } = req.body;
     await client.query("begin");
     const userQ = await client.query(
       `
@@ -345,11 +396,11 @@ router.post("/tenants", async (req, res) => {
     const userId = userQ.rows[0].user_id;
     const tenantQ = await client.query(
       `
-      insert into tenant (user_id, room_id, full_name, phone, email)
-      values ($1, $2, $3, $4, $5)
+      insert into tenant (user_id, building_id, room_no, full_name, phone, email)
+      values ($1, $2, $3, $4, $5, $6)
       returning tenant_id
       `,
-      [userId, room_id, full_name, phone || null, email || null]
+      [userId, building_id, room_no, full_name, phone || null, email || null]
     );
     await client.query("commit");
     res.status(201).json({ tenant_id: tenantQ.rows[0].tenant_id });
@@ -371,7 +422,7 @@ router.put("/tenants/:id", async (req, res) => {
   const client = await pool.connect();
   try {
     const { id } = req.params;
-    const { full_name, phone, email, room_id, status, password } = req.body;
+    const { full_name, phone, email, building_id, room_no, status, password } = req.body;
     await client.query("begin");
     const tenantQ = await client.query(
       `
@@ -379,11 +430,12 @@ router.put("/tenants/:id", async (req, res) => {
       set full_name = coalesce($1, full_name),
           phone = $2,
           email = $3,
-          room_id = coalesce($4, room_id)
-      where tenant_id = $5
+          building_id = coalesce($4, building_id),
+          room_no = coalesce($5, room_no)
+      where tenant_id = $6
       returning user_id
       `,
-      [full_name || null, phone || null, email || null, room_id || null, id]
+      [full_name || null, phone || null, email || null, building_id || null, room_no || null, id]
     );
     if (tenantQ.rows.length === 0) {
       await client.query("rollback");
@@ -601,7 +653,7 @@ router.get("/packages", async (req, res) => {
         r.room_no
       from package p
       join tenant t on p.tenant_id = t.tenant_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       ${whereClause}
       order by p.arrived_at desc
@@ -635,7 +687,7 @@ router.get("/packages/:id", async (req, res) => {
         s.full_name as handled_by_staff
       from package p
       join tenant t on p.tenant_id = t.tenant_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       left join staff s on p.received_by_staff_id = s.staff_id
       where p.package_id = $1
@@ -662,33 +714,7 @@ router.get("/packages/:id", async (req, res) => {
 
 router.post("/packages", async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
-  try {
-    const { tenant_id, staff_id, tracking_no, carrier, status, note, arrived_at } = req.body;
-    if (!tenant_id || !staff_id) {
-      return res.status(400).json({ message: "tenant_id and staff_id are required" });
-    }
-    const effectiveStatus = status || "ARRIVED";
-    const insertPkg = await pool.query(
-      `
-      insert into package (tenant_id, received_by_staff_id, tracking_no, carrier, arrived_at, current_status)
-      values ($1, $2, $3, $4, coalesce($5, now()), $6)
-      returning package_id
-      `,
-      [tenant_id, staff_id, tracking_no || null, carrier || null, arrived_at || null, effectiveStatus]
-    );
-    const pkgId = insertPkg.rows[0].package_id;
-    await pool.query(
-      `
-      insert into package_status_log (package_id, updated_by_staff_id, status, note)
-      values ($1, $2, $3, $4)
-      `,
-      [pkgId, staff_id, effectiveStatus, note || ""]
-    );
-    res.status(201).json({ package_id: pkgId });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
+  return res.status(403).json({ message: "Admins cannot create packages; please use officer workflow." });
 });
 
 router.patch("/packages/:id", async (req, res) => {
@@ -771,7 +797,6 @@ router.get("/package-log", async (req, res) => {
     const q = await pool.query(
       `
       select
-        psl.log_id,
         psl.status,
         psl.status_time,
         psl.note,
@@ -784,7 +809,7 @@ router.get("/package-log", async (req, res) => {
       from package_status_log psl
       join package p on psl.package_id = p.package_id
       join tenant t on p.tenant_id = t.tenant_id
-      join room r on t.room_id = r.room_id
+      join room r on t.building_id = r.building_id and t.room_no = r.room_no
       join building b on r.building_id = b.building_id
       left join staff s on psl.updated_by_staff_id = s.staff_id
       ${whereClause}

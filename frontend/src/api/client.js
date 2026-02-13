@@ -1,3 +1,8 @@
+/**
+ * Shared API client.
+ * Adds auth tokens automatically and performs a global logout when the backend rejects a session.
+ */
+
 import axios from "axios";
 
 export const api = axios.create({

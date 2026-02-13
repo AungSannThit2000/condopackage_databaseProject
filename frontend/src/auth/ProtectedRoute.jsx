@@ -1,3 +1,8 @@
+/**
+ * Route guard component.
+ * Blocks unauthenticated users and enforces role-based page access before rendering children.
+ */
+
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext.jsx";
 

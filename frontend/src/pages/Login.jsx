@@ -1,3 +1,8 @@
+/**
+ * Login page.
+ * Sends credentials to the backend, saves the returned session, and routes users by role.
+ */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";

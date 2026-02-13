@@ -1,3 +1,8 @@
+/**
+ * App routing table.
+ * Declares all public/protected routes and redirects users to the correct dashboard by role.
+ */
+
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login.jsx";
 import OfficerDashboard from "./pages/OfficerDashboard.jsx";

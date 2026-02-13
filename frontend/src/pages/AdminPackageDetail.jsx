@@ -1,3 +1,8 @@
+/**
+ * Admin package-detail page.
+ * Read-only package breakdown used for audit and support checks.
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client.js";

@@ -17,22 +17,24 @@ CREATE TABLE building (
 
 -- ROOM
 CREATE TABLE room (
-  room_id BIGSERIAL PRIMARY KEY,
   building_id BIGINT NOT NULL REFERENCES building(building_id),
   room_no TEXT NOT NULL,
   floor INT,
   status TEXT NOT NULL DEFAULT 'ACTIVE',
-  UNIQUE(building_id, room_no)
+  PRIMARY KEY (building_id, room_no)
 );
 
 -- TENANT PROFILE (each tenant must have a room)
 CREATE TABLE tenant (
   tenant_id BIGSERIAL PRIMARY KEY,
   user_id BIGINT UNIQUE NOT NULL REFERENCES user_account(user_id),
-  room_id BIGINT NOT NULL REFERENCES room(room_id),
+  building_id BIGINT NOT NULL,
+  room_no TEXT NOT NULL,
   full_name TEXT NOT NULL,
   phone TEXT,
-  email TEXT
+  email TEXT,
+  CONSTRAINT fk_tenant_room FOREIGN KEY (building_id, room_no) REFERENCES room(building_id, room_no),
+  CONSTRAINT tenant_one_per_room UNIQUE (building_id, room_no)
 );
 
 -- STAFF PROFILE (officer/admin info; NO room_id)
@@ -53,16 +55,15 @@ CREATE TABLE package (
   carrier TEXT,
   sender_name TEXT,
   arrived_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  current_status TEXT NOT NULL CHECK (current_status IN ('ARRIVED','NOTIFIED','PICKED_UP','RETURNED')),
+  current_status TEXT NOT NULL CHECK (current_status IN ('ARRIVED','PICKED_UP','RETURNED')),
   picked_up_at TIMESTAMPTZ
 );
 
--- PACKAGE STATUS LOG
 CREATE TABLE package_status_log (
-  log_id BIGSERIAL PRIMARY KEY,
   package_id BIGINT NOT NULL REFERENCES package(package_id),
   updated_by_staff_id BIGINT NOT NULL REFERENCES staff(staff_id),
   status TEXT NOT NULL,
   status_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-  note TEXT
+  note TEXT,
+  PRIMARY KEY (package_id, status_time)
 );

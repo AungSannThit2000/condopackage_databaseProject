@@ -1,3 +1,8 @@
+/**
+ * Reusable dashboard shell.
+ * Provides consistent sidebar/topbar layout so each role page can focus on its own business logic.
+ */
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 

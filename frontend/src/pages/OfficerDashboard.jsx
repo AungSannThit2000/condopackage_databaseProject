@@ -1,3 +1,8 @@
+/**
+ * Officer dashboard page.
+ * Shows package KPI cards plus a searchable/filterable working list for front-desk staff.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";

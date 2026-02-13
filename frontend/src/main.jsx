@@ -1,3 +1,8 @@
+/**
+ * Frontend bootstrap file.
+ * Mounts React, router, and auth provider so every page has navigation + session context.
+ */
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";

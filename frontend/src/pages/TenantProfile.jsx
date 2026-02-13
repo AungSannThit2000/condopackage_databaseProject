@@ -1,3 +1,8 @@
+/**
+ * Tenant profile page.
+ * Lets residents review room details and update personal contact fields.
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -7,17 +12,49 @@ export default function TenantProfile() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ phone: "", email: "" });
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
     api
       .get("/tenant/profile")
-      .then((res) => setProfile(res.data.profile))
+      .then((res) => {
+        setProfile(res.data.profile);
+        setForm({
+          phone: res.data.profile?.phone || "",
+          email: res.data.profile?.email || "",
+        });
+      })
       .catch(() => alert("Failed to load profile"))
       .finally(() => setLoading(false));
   }, []);
 
   const roomLabel = profile ? `${profile.building_code || ""}${profile.room_no || ""}` : "";
   const userBadge = roomLabel && profile?.full_name ? `${roomLabel} - ${profile.full_name}` : "Resident";
+
+  function onChange(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSave(e) {
+    e.preventDefault();
+    setMessage(null);
+    setSaving(true);
+    try {
+      const res = await api.put("/tenant/profile", {
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+      });
+      setProfile(res.data.profile);
+      setMessage({ type: "success", text: "Profile updated" });
+    } catch (err) {
+      const text = err.response?.data?.message || "Failed to update profile";
+      setMessage({ type: "error", text });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <DashboardLayout
@@ -35,13 +72,13 @@ export default function TenantProfile() {
       ]}
     >
       <div className="tableBox" style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div className="tableHeader">Profile (read-only)</div>
+        <div className="tableHeader">Profile</div>
         {loading ? (
           <div style={{ padding: 18 }}>Loading…</div>
         ) : !profile ? (
           <div style={{ padding: 18 }}>Profile not found</div>
         ) : (
-          <div style={{ padding: 18 }}>
+          <form style={{ padding: 18 }} onSubmit={handleSave}>
             <div
               style={{
                 display: "grid",
@@ -92,17 +129,20 @@ export default function TenantProfile() {
                   <span role="img" aria-label="phone">📞</span>
                   <span style={{ fontWeight: 600, color: "#374151" }}>Phone</span>
                 </div>
-                <div
+                <input
                   style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 16,
-                    padding: "14px 16px",
+                    width: "100%",
+                    background: "#fff",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 12,
+                    padding: "12px 14px",
                     color: "#111827",
+                    fontSize: 15,
                   }}
-                >
-                  {profile.phone || "-"}
-                </div>
+                  value={form.phone}
+                  onChange={(e) => onChange("phone", e.target.value)}
+                  placeholder="Enter phone"
+                />
               </div>
 
               <div>
@@ -110,17 +150,21 @@ export default function TenantProfile() {
                   <span role="img" aria-label="email">✉️</span>
                   <span style={{ fontWeight: 600, color: "#374151" }}>Email</span>
                 </div>
-                <div
+                <input
                   style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 16,
-                    padding: "14px 16px",
+                    width: "100%",
+                    background: "#fff",
+                    border: "1px solid #d1d5db",
+                    borderRadius: 12,
+                    padding: "12px 14px",
                     color: "#111827",
+                    fontSize: 15,
                   }}
-                >
-                  {profile.email || "-"}
-                </div>
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => onChange("email", e.target.value)}
+                  placeholder="Enter email"
+                />
               </div>
             </div>
 
@@ -158,7 +202,7 @@ export default function TenantProfile() {
                   🧑 <span>Floor</span>
                 </div>
                 <div style={{ marginTop: 6, color: "#111827" }}>
-                  {profile.floor ? `${profile.floor} Floor` : "-"}
+                  {profile.floor === null || profile.floor === undefined ? "-" : `Floor (${profile.floor})`}
                 </div>
               </div>
               <div
@@ -177,7 +221,29 @@ export default function TenantProfile() {
                 </div>
               </div>
             </div>
-          </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20, gap: 12 }}>
+              {message ? (
+                <div
+                  style={{
+                    alignSelf: "center",
+                    color: message.type === "success" ? "#166534" : "#b91c1c",
+                    fontWeight: 600,
+                  }}
+                >
+                  {message.text}
+                </div>
+              ) : null}
+              <button
+                type="submit"
+                className="btnPrimary"
+                disabled={saving}
+                style={{ minWidth: 120 }}
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </DashboardLayout>

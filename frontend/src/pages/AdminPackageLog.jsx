@@ -1,3 +1,8 @@
+/**
+ * Admin package-log page.
+ * Displays the full package status audit trail with admin-focused search and filtering.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -106,7 +111,7 @@ export default function AdminPackageLog() {
                 <tr><td colSpan="6">No log entries</td></tr>
               ) : (
                 filtered.map((log) => (
-                  <tr key={log.log_id}>
+                  <tr key={`${log.package_id}-${log.status_time}`}>
                     <td>{new Date(log.status_time).toLocaleString()}</td>
                     <td><span className="badge">{log.status}</span></td>
                     <td>{log.tracking_no || "—"}</td>

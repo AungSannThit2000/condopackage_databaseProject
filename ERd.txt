@@ -1,74 +1,176 @@
-erDiagram
-  USER_ACCOUNT ||--o| TENANT : "TENANT.user_id"
-  USER_ACCOUNT ||--o| STAFF  : "STAFF.user_id"
+========================================================
+ER DIAGRAM (MIN–MAX NOTATION)
+========================================================
 
-  BUILDING ||--o{ ROOM : "ROOM.building_id"
-  ROOM ||--o| TENANT  : "TENANT.room_id"
+Notation:
+- __attribute__        = Primary Key
+- --attribute--        = Discriminator / Partial Key
+- [min..max]           = Min–Max participation
+- WEAK ENTITY          = depends on owner entity
+- IDENTIFYING          = identifying relationship
+- ISA                  = inheritance (disjoint, total)
 
-  TENANT ||--o{ PACKAGE : "PACKAGE.tenant_id"
-  STAFF  ||--o{ PACKAGE : "PACKAGE.received_by_staff_id"
+========================================================
+ENTITY SETS
+========================================================
 
-  PACKAGE ||--o{ PACKAGE_STATUS_LOG : "log.package_id"
-  STAFF   ||--o{ PACKAGE_STATUS_LOG : "log.updated_by_staff_id"
+USER_ACCOUNT (Strong)
+--------------------
+__user_id__
+username (unique)
+password
+status
+created_at
+role {TENANT, OFFICER, ADMIN}
 
-  USER_ACCOUNT {
-    bigint user_id PK
-    text username UNIQUE
-    text password
-    text role  "TENANT|OFFICER|ADMIN"
-    text status "default ACTIVE"
-    timestamptz created_at
-  }
 
-  BUILDING {
-    bigint building_id PK
-    text building_code UNIQUE
-    text building_name
-  }
+TENANT (Subtype of USER_ACCOUNT)
+--------------------------------
+__tenant_id__
+user_id (FK to USER_ACCOUNT)
+building_id (FK to BUILDING)
+room_no
+full_name
+phone
+email
 
-  ROOM {
-    bigint room_id PK
-    bigint building_id FK
-    text room_no
-    int floor
-    text status "default ACTIVE"
-    UNIQUE(building_id, room_no)
-  }
 
-  TENANT {
-    bigint tenant_id PK
-    bigint user_id FK UNIQUE
-    bigint room_id FK
-    text full_name
-    text phone
-    text email
-  }
+STAFF (Subtype of USER_ACCOUNT)
+-------------------------------
+__staff_id__
+user_id (FK to USER_ACCOUNT)
+full_name
+phone
+email
 
-  STAFF {
-    bigint staff_id PK
-    bigint user_id FK UNIQUE
-    text full_name
-    text phone
-    text email
-  }
 
-  PACKAGE {
-    bigint package_id PK
-    bigint tenant_id FK
-    bigint received_by_staff_id FK
-    text tracking_no
-    text carrier
-    text sender_name
-    timestamptz arrived_at "default now()"
-    text current_status "ARRIVED|PICKED_UP|RETURNED"
-    timestamptz picked_up_at
-  }
+BUILDING (Strong)
+-----------------
+__building_id__
+building_code (unique)
+building_name
 
-  PACKAGE_STATUS_LOG {
-    bigint log_id PK
-    bigint package_id FK
-    bigint updated_by_staff_id FK
-    text status
-    timestamptz status_time "default now()"
-    text note
-  }
+
+ROOM (WEAK ENTITY of BUILDING)
+------------------------------
+__building_id__        // owner key
+--room_no--            // discriminator (partial key)
+floor
+status
+
+
+PACKAGE (Strong)
+----------------
+__package_id__
+tenant_id (FK)
+received_by_staff_id (FK)
+tracking_no
+carrier
+sender_name
+arrived_at
+current_status
+picked_up_at
+
+
+PACKAGE_STATUS_LOG (WEAK ENTITY of PACKAGE)
+------------------------------------------
+__package_id__         // owner key
+--status_time--        // discriminator (partial key)
+updated_by_staff_id (FK)
+status
+note
+
+
+========================================================
+ISA HIERARCHY
+========================================================
+
+USER_ACCOUNT ISA { TENANT, STAFF }
+- Disjoint
+- Total (enforced in application logic)
+- Based on role attribute; TENANT/STAFF use their own surrogate PKs with FK to USER_ACCOUNT
+
+(Optional refinement)
+STAFF ISA { OFFICER, ADMIN }
+- Disjoint
+- Total
+
+
+========================================================
+RELATIONSHIPS (MIN–MAX)
+========================================================
+
+1) CONTAINS (BUILDING, ROOM)   << IDENTIFYING >>
+-----------------------------------------------
+BUILDING [0..N] —— ⟪CONTAINS⟫ —— ROOM [1..1]
+
+Meaning:
+- A building may have zero or many rooms
+- Every room must belong to exactly one building
+- ROOM has total participation (modeled as weak; implemented with composite PK (building_id, room_no))
+
+
+2) LIVES_IN (TENANT, ROOM)
+--------------------------
+TENANT [1..1] —— LIVES_IN —— ROOM [0..1]
+
+Meaning:
+- Every tenant must live in exactly one room
+- A room may have zero or one tenant
+
+
+3) FOR (TENANT, PACKAGE)
+------------------------
+TENANT [0..N] —— FOR —— PACKAGE [1..1]
+
+Meaning:
+- A tenant may receive zero or many packages
+- Each package is for exactly one tenant
+
+
+4) RECEIVED_BY (STAFF, PACKAGE)
+--------------------------------
+STAFF [0..N] —— RECEIVED_BY —— PACKAGE [1..1]
+
+Meaning:
+- A staff member may receive zero or many packages
+- Each package is received by exactly one staff member
+
+
+5) HAS_LOG (PACKAGE, PACKAGE_STATUS_LOG)   << IDENTIFYING >>
+------------------------------------------------------------
+PACKAGE [0..N] —— ⟪HAS_LOG⟫ —— PACKAGE_STATUS_LOG [1..1]
+
+Meaning:
+- A package may have zero or many status logs
+- Each status log belongs to exactly one package
+- PACKAGE_STATUS_LOG has total participation (weak, identified by package_id + status_time)
+
+
+6) UPDATED_BY (STAFF, PACKAGE_STATUS_LOG)
+-----------------------------------------
+STAFF [0..N] —— UPDATED_BY —— PACKAGE_STATUS_LOG [1..1]
+
+Meaning:
+- A staff member may update many status logs
+- Each status log is updated by exactly one staff member
+
+
+========================================================
+STRONG vs WEAK ENTITY SUMMARY
+========================================================
+
+Strong Entity Sets:
+- USER_ACCOUNT
+- TENANT
+- STAFF
+- BUILDING
+- PACKAGE
+
+Weak Entity Sets:
+- ROOM (discriminator: --room_no--)
+- PACKAGE_STATUS_LOG (discriminator: --status_time--)
+
+========================================================
+END OF ERd.txt
+========================================================

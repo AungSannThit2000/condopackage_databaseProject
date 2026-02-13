@@ -1,3 +1,8 @@
+/**
+ * Admin tenants page.
+ * Manages tenant accounts, room assignment, status changes, and account lifecycle actions.
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
@@ -9,7 +14,7 @@ export default function AdminTenants() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ username: "", password: "", full_name: "", phone: "", email: "", room_id: "" });
+  const [form, setForm] = useState({ username: "", password: "", full_name: "", phone: "", email: "", building_id: "", room_no: "" });
   const [showCreate, setShowCreate] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [editPassword, setEditPassword] = useState("");
@@ -52,7 +57,7 @@ export default function AdminTenants() {
 
   async function handleCreate(e) {
     e.preventDefault();
-    if (!form.username || !form.password || !form.full_name || !form.room_id) {
+    if (!form.username || !form.password || !form.full_name || !form.building_id || !form.room_no) {
       alert("Username, password, name and room are required");
       return;
     }
@@ -63,9 +68,10 @@ export default function AdminTenants() {
         full_name: form.full_name,
         phone: form.phone || null,
         email: form.email || null,
-        room_id: Number(form.room_id),
+        building_id: Number(form.building_id),
+        room_no: form.room_no,
       });
-      setForm({ username: "", password: "", full_name: "", phone: "", email: "", room_id: "" });
+      setForm({ username: "", password: "", full_name: "", phone: "", email: "", building_id: "", room_no: "" });
       setShowCreate(false);
       loadData();
       alert("Tenant created");
@@ -93,7 +99,8 @@ export default function AdminTenants() {
         full_name: editTarget.full_name,
         phone: editTarget.phone,
         email: editTarget.email,
-        room_id: editTarget.room_id,
+        building_id: editTarget.building_id ? Number(editTarget.building_id) : undefined,
+        room_no: editTarget.room_no,
         status: editTarget.status,
       };
       if (editPassword.trim()) {
@@ -284,19 +291,22 @@ export default function AdminTenants() {
                 <div>
                   <label className="label">Room</label>
                   <select
-                    value={form.room_id}
-                    onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}
+                    value={form.building_id && form.room_no ? `${form.building_id}:${form.room_no}` : ""}
+                    onChange={(e) => {
+                      const [bId, rNo] = e.target.value.split(":");
+                      setForm((f) => ({ ...f, building_id: bId, room_no: rNo }));
+                    }}
                     style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb" }}
                   >
                     <option value="">Select room</option>
                     {rooms.map((r) => (
-                      <option key={r.room_id} value={r.room_id}>
+                      <option key={`${r.building_id}:${r.room_no}`} value={`${r.building_id}:${r.room_no}`}>
                         {r.building_code}
                         {r.room_no}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                      </option>
+                    ))}
+                  </select>
+                </div>
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
                 <button className="btnPrimary" type="submit">Create</button>
                 <button className="btnSecondary" type="button" onClick={() => setShowCreate(false)}>Cancel</button>
@@ -383,12 +393,19 @@ export default function AdminTenants() {
               <div>
                 <label className="label">Room</label>
                 <select
-                  value={editTarget.room_id}
-                  onChange={(e) => setEditTarget((t) => ({ ...t, room_id: e.target.value }))}
+                  value={
+                    editTarget.building_id && editTarget.room_no
+                      ? `${editTarget.building_id}:${editTarget.room_no}`
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const [bId, rNo] = e.target.value.split(":");
+                    setEditTarget((t) => ({ ...t, building_id: bId, room_no: rNo }));
+                  }}
                   style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid #e5e7eb", background: "#f9fafb" }}
                 >
                   {rooms.map((r) => (
-                    <option key={r.room_id} value={r.room_id}>
+                    <option key={`${r.building_id}:${r.room_no}`} value={`${r.building_id}:${r.room_no}`}>
                       {r.building_code}
                       {r.room_no}
                     </option>

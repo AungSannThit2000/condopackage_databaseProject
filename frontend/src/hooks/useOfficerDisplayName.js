@@ -1,3 +1,8 @@
+/**
+ * Officer display-name hook.
+ * Lazily fetches the officer profile name once and caches it in auth context.
+ */
+
 import { useEffect } from "react";
 import { api } from "../api/client.js";
 import { useAuth } from "../auth/AuthContext.jsx";

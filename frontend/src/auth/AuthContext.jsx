@@ -1,3 +1,8 @@
+/**
+ * Auth state container.
+ * Stores token/role/display name and exposes login/logout helpers to the whole app tree.
+ */
+
 import { createContext, useContext, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
